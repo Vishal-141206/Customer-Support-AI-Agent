@@ -520,6 +520,7 @@ result = {{
     "points_redeemed": points_redeemed,
     "points_discount": round(points_discount, 2),
     "tier_discount": round(tier_discount, 2),
+    "tier_discount_pct": round(tier_discount_rate * 100, 2),
     "final_total": round(final_total, 2),
     "total_savings": round(total_savings, 2),
     "points_earned": points_earned,
@@ -591,11 +592,13 @@ print(json.dumps(result))
         )
 
         fallback = {
+            "loyalty_points": loyalty_points,
             "order_total": round(
                 order_total,
                 2,
             ),
             "tier": tier,
+            "points_redeemed": 0,
             "tier_discount": round(
                 tier_discount,
                 2,
@@ -609,6 +612,8 @@ print(json.dumps(result))
                 tier_discount,
                 2,
             ),
+            "points_earned": 0,
+            "remaining_points": loyalty_points,
             "note": (
                 "Code Interpreter unavailable; "
                 "tier discount only."
@@ -739,9 +744,23 @@ async def invoke(
 
             # ── Invoke Agent ─────────────────────────────────────────────────
 
-            response = await agent.invoke_async(
-                user_input
-            )
+            try:
+                response = await agent.invoke_async(
+                    user_input
+                )
+            except Exception as gateway_error:
+                logger.warning(
+                    "Gateway-backed operation failed: %s",
+                    gateway_error,
+                )
+
+                return (
+                    "I couldn't complete the requested "
+                    "customer-support operation because the "
+                    "Gateway service is currently unavailable. "
+                    "Please retry in a moment or check the "
+                    "Gateway configuration."
+                )
 
         # ── Return response text ─────────────────────────────────────────────
 
@@ -782,7 +801,9 @@ async def invoke(
         )
 
         return (
-            f"Agent invocation failed: {e}"
+            "I couldn't complete your request right now. "
+            "Please retry in a moment. If the problem continues, "
+            "please check the agent configuration and service status."
         )
 
 
